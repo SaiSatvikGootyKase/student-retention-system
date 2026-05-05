@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-brand-slate text-brand-navy font-sans antialiased;
+  }
+  :where(button, [role='button'], a, input, textarea, select):focus-visible {
+    @apply outline-none ring-2 ring-brand-indigo/35 ring-offset-2 ring-offset-brand-slate;
+  }
+}
+
+@layer utilities {
+  .page-enter {
+    @apply motion-safe:animate-slide-up motion-reduce:opacity-100;
+  }
+  .page-fade {
+    @apply motion-safe:animate-fade-in motion-reduce:opacity-100;
+  }
+}

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    # In Compose, use service hostname "mongo" (not localhost).
+    environment:
+      # Allow compose Mongo hostname; disable localhost pin from application.properties
+      APP_MONGODB_USE_LOCALHOST_ONLY: "false"
+      SPRING_MONGODB_URI: mongodb://mongo:27017/student
+      SPRING_MONGODB_DATABASE: student
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: "6379"
+    depends_on:
+      - mongo
+      - redis
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
