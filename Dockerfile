@@ -10,8 +10,11 @@ COPY settings.gradle .
 # Copy source code
 COPY src src
 
+# gradlew often loses the executable bit when copied from Windows → chmod fixes Render/Docker builds
+RUN chmod +x gradlew
+
 # Build the application
-RUN ./gradlew build -x test
+RUN ./gradlew build -x test --no-daemon
 
 # Create final minimal image
 FROM eclipse-temurin:21-jre-alpine
