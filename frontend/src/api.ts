@@ -1,6 +1,11 @@
 // Centralized API client for all backend calls
+//
+// Local dev: leave unset → `/api/v1` (Vite proxy in vite.config.ts).
+// Vercel + Render: set VITE_API_BASE_URL at build time to your Render URL + path, e.g.
+//   https://your-service.onrender.com/api/v1
 
-const BASE = '/api/v1';
+const envBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+const BASE = envBase ? envBase.replace(/\/$/, '') : '/api/v1';
 
 /** Build query string; omits undefined/null/empty so Spring never sees "undefined". */
 export function buildQuery(params?: Record<string, string | undefined | null>): string {
@@ -53,8 +58,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 }
 
-// Auth — expectedRole must match the Student / Faculty tab (enforced server-side).
-export const login = (email: string, password: string, expectedRole: 'STUDENT' | 'FACULTY') =>
+// Auth — expectedRole must match the portal tab (enforced server-side).
+export const login = (email: string, password: string, expectedRole: 'STUDENT' | 'FACULTY' | 'ADMIN') =>
   request<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password, expectedRole }),
@@ -67,6 +72,16 @@ export const registerAccount = (body: {
   role: 'STUDENT' | 'FACULTY';
   department?: string;
 }) => request<User>('/auth/register', { method: 'POST', body: JSON.stringify(body) });
+
+/** Admin-only: create faculty or student (server checks adminUserId is ADMIN). */
+export const adminCreateUser = (body: {
+  adminUserId: string;
+  name: string;
+  email: string;
+  password: string;
+  role: 'STUDENT' | 'FACULTY';
+  department?: string;
+}) => request<User>('/admin/users', { method: 'POST', body: JSON.stringify(body) });
 
 // Assignments
 export const getAssignments = (params: { facultyId?: string; studentId?: string }) =>

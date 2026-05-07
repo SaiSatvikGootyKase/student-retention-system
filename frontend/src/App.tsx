@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
+import AdminPortal from './pages/AdminPortal';
 import DropoutProfileForm from './pages/student/DropoutProfileForm';
 
 function AppInner() {
@@ -17,6 +18,14 @@ function AppInner() {
 
   if (needsDropoutProfile) {
     return <DropoutProfileForm onComplete={markDropoutProfileComplete} />;
+  }
+
+  if (role === 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-brand-slate font-sans">
+        <AdminPortal />
+      </div>
+    );
   }
 
   return (

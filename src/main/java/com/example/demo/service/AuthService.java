@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.AdminCreateUserRequest;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.LoginResponse;
 import com.example.demo.model.Student;
@@ -45,8 +46,8 @@ public class AuthService {
             );
         }
         String want = expectedRole.trim().toUpperCase(Locale.ROOT);
-        if (!"STUDENT".equals(want) && !"FACULTY".equals(want)) {
-            throw new RuntimeException("expectedRole must be STUDENT or FACULTY");
+        if (!"STUDENT".equals(want) && !"FACULTY".equals(want) && !"ADMIN".equals(want)) {
+            throw new RuntimeException("expectedRole must be STUDENT, FACULTY, or ADMIN");
         }
         if (user.getRole() == null) {
             throw new RuntimeException("Wrong login tab: this account has no role assigned.");
@@ -133,6 +134,61 @@ public class AuthService {
             user.setDepartment(school);
         }
         User saved = userRepository.save(user);
+        if (saved.getRole() == Role.STUDENT) {
+            studentOnboardingService.ensureStudentLinked(saved);
+            return userRepository.findById(saved.getId()).orElse(saved);
+        }
+        return saved;
+    }
+
+    /**
+     * Admin-only: create a faculty or student account with a bcrypt-hashed password.
+     */
+    public User createUserByAdmin(AdminCreateUserRequest req) {
+        if (req.getAdminUserId() == null || req.getAdminUserId().isBlank()) {
+            throw new RuntimeException("adminUserId is required");
+        }
+        User admin = userRepository.findById(req.getAdminUserId().trim())
+                .orElseThrow(() -> new RuntimeException("Admin user not found"));
+        if (admin.getRole() != Role.ADMIN) {
+            throw new RuntimeException("Only ADMIN users can create accounts");
+        }
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new RuntimeException("name is required");
+        }
+        if (req.getEmail() == null || req.getEmail().isBlank()) {
+            throw new RuntimeException("email is required");
+        }
+        if (req.getPassword() == null || req.getPassword().isBlank()) {
+            throw new RuntimeException("password is required");
+        }
+        if (req.getRole() != Role.STUDENT && req.getRole() != Role.FACULTY) {
+            throw new RuntimeException("role must be STUDENT or FACULTY");
+        }
+        String email = req.getEmail().trim();
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("User already exists with email: " + email);
+        }
+
+        User u = new User();
+        u.setName(req.getName().trim());
+        u.setEmail(email);
+        u.setPasswordHash(bcrypt.encode(req.getPassword()));
+        u.setLegacyPassword(null);
+        u.setRole(req.getRole());
+
+        if (req.getRole() == Role.STUDENT) {
+            String school = req.getDepartment() == null ? "" : req.getDepartment().trim();
+            if (school.isEmpty()) {
+                throw new RuntimeException("School / department is required for new students");
+            }
+            u.setDepartment(school);
+        } else {
+            String dept = req.getDepartment() == null ? "" : req.getDepartment().trim();
+            u.setDepartment(dept.isEmpty() ? "Faculty" : dept);
+        }
+
+        User saved = userRepository.save(u);
         if (saved.getRole() == Role.STUDENT) {
             studentOnboardingService.ensureStudentLinked(saved);
             return userRepository.findById(saved.getId()).orElse(saved);

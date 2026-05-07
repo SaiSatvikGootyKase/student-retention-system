@@ -9,8 +9,14 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // Default: local dev. Set APP_CORS_ORIGINS to comma-separated patterns for production
+        // (e.g. "https://yourapp.vercel.app,https://www.yourdomain.com") or use * behind HTTPS only with care.
+        String origins = System.getenv("APP_CORS_ORIGINS");
+        String[] patterns = (origins == null || origins.isBlank())
+                ? new String[] { "http://localhost:*", "http://127.0.0.1:*" }
+                : origins.trim().split("\\s*,\\s*");
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("http://localhost:*")
+                .allowedOriginPatterns(patterns)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(false);

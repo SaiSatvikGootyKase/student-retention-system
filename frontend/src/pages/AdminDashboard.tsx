@@ -1,102 +1,200 @@
 import React, { useState } from 'react';
-import { Users, Shield, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { GraduationCap, UserPlus, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { adminCreateUser } from '../api';
 
-const SYSTEM_USERS = [
-  { id: 1, name: 'Alex Waverly', email: 'alex@uni.edu', role: 'student', active: true },
-  { id: 2, name: 'Mr. Thompson', email: 'thompson@uni.edu', role: 'teacher', active: true },
-  { id: 3, name: 'Admin User', email: 'admin@uni.edu', role: 'admin', active: true },
-  { id: 4, name: 'Sarah Jenkins', email: 'sarah@uni.edu', role: 'student', active: true },
-];
+type FormState = {
+  name: string;
+  email: string;
+  password: string;
+  department: string;
+};
 
-export default function AdminDashboard() {
-  const [users, setUsers] = useState(SYSTEM_USERS);
+const emptyForm = (): FormState => ({
+  name: '',
+  email: '',
+  password: '',
+  department: '',
+});
 
-  const toggleRole = (userId: number, currentRole: string) => {
-    const nextRole = currentRole === 'student' ? 'teacher' : (currentRole === 'teacher' ? 'admin' : 'student');
-    setUsers(users.map(u => u.id === userId ? { ...u, role: nextRole } : u));
+export default function AdminDashboard({ adminUserId }: { adminUserId: string }) {
+  const [faculty, setFaculty] = useState<FormState>(emptyForm);
+  const [student, setStudent] = useState<FormState>(emptyForm);
+  const [loadingF, setLoadingF] = useState(false);
+  const [loadingS, setLoadingS] = useState(false);
+  const [msgF, setMsgF] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [msgS, setMsgS] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const submitFaculty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsgF(null);
+    if (!adminUserId) {
+      setMsgF({ type: 'err', text: 'Not signed in as admin.' });
+      return;
+    }
+    setLoadingF(true);
+    try {
+      await adminCreateUser({
+        adminUserId,
+        name: faculty.name.trim(),
+        email: faculty.email.trim(),
+        password: faculty.password,
+        role: 'FACULTY',
+        department: faculty.department.trim() || undefined,
+      });
+      setMsgF({ type: 'ok', text: `Faculty account created for ${faculty.email.trim()}.` });
+      setFaculty(emptyForm());
+    } catch (err: unknown) {
+      setMsgF({ type: 'err', text: err instanceof Error ? err.message : 'Request failed.' });
+    } finally {
+      setLoadingF(false);
+    }
   };
 
+  const submitStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsgS(null);
+    if (!adminUserId) {
+      setMsgS({ type: 'err', text: 'Not signed in as admin.' });
+      return;
+    }
+    if (!student.department.trim()) {
+      setMsgS({ type: 'err', text: 'School / department is required for students.' });
+      return;
+    }
+    setLoadingS(true);
+    try {
+      await adminCreateUser({
+        adminUserId,
+        name: student.name.trim(),
+        email: student.email.trim(),
+        password: student.password,
+        role: 'STUDENT',
+        department: student.department.trim(),
+      });
+      setMsgS({ type: 'ok', text: `Student account created for ${student.email.trim()}.` });
+      setStudent(emptyForm());
+    } catch (err: unknown) {
+      setMsgS({ type: 'err', text: err instanceof Error ? err.message : 'Request failed.' });
+    } finally {
+      setLoadingS(false);
+    }
+  };
+
+  const inputCls =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-brand-indigo focus:outline-none focus:ring-2 focus:ring-brand-indigo/15';
+
   return (
-    <div className="space-y-8 py-2 page-fade">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-brand-navy tracking-tight">Admin Console</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">Manage system roles, access, and global configurations</p>
-        </div>
+    <div className="mx-auto max-w-5xl space-y-8 page-fade">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-brand-navy">Administration</h1>
+        <p className="mt-1 text-sm font-medium text-slate-500">
+          Create faculty and student accounts. New students must complete the retention profile on first login.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-500 mb-1">Total Users</p>
-            <h3 className="text-3xl font-bold text-brand-navy">1,042</h3>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-emerald/10 text-brand-emerald">
+              <UserPlus size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-brand-navy">New faculty</h2>
+              <p className="text-xs text-slate-500">Creates a FACULTY user (password is set here).</p>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-brand-indigo/10 flex items-center justify-center text-brand-indigo">
-            <Users size={20} />
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-500 mb-1">System Status</p>
-            <h3 className="text-xl font-bold text-brand-emerald mt-1 flex items-center gap-2">
-              <CheckCircle2 size={24} /> Optimal
-            </h3>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-brand-emerald/10 flex items-center justify-center text-brand-emerald">
-            <Shield size={20} />
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between opacity-50">
-          <div>
-            <p className="text-sm font-semibold text-slate-500 mb-1">Failed Jobs</p>
-            <h3 className="text-xl font-bold text-brand-navy mt-1">0</h3>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-brand-rose/10 flex items-center justify-center text-brand-rose">
-            <ShieldAlert size={20} />
-          </div>
-        </div>
-      </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-200">
-          <h2 className="text-lg font-bold text-brand-navy">Role Management</h2>
+          {msgF && (
+            <div
+              className={`mb-4 flex items-start gap-2 rounded-lg border p-3 text-sm ${
+                msgF.type === 'ok'
+                  ? 'border-brand-emerald/30 bg-brand-emerald/5 text-emerald-900'
+                  : 'border-brand-rose/25 bg-brand-rose/5 text-brand-rose'
+              }`}
+            >
+              {msgF.type === 'ok' ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+              {msgF.text}
+            </div>
+          )}
+
+          <form onSubmit={submitFaculty} className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Full name</label>
+              <input className={inputCls} value={faculty.name} onChange={(e) => setFaculty({ ...faculty, name: e.target.value })} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Email</label>
+              <input type="email" className={inputCls} value={faculty.email} onChange={(e) => setFaculty({ ...faculty, email: e.target.value })} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Password</label>
+              <input type="password" className={inputCls} value={faculty.password} onChange={(e) => setFaculty({ ...faculty, password: e.target.value })} required minLength={6} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Department (optional)</label>
+              <input className={inputCls} value={faculty.department} onChange={(e) => setFaculty({ ...faculty, department: e.target.value })} placeholder="e.g. Computer Science" />
+            </div>
+            <button
+              type="submit"
+              disabled={loadingF}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-emerald py-2.5 text-sm font-bold text-white shadow transition hover:bg-brand-emerald/90 disabled:opacity-60"
+            >
+              {loadingF ? <Loader2 size={16} className="animate-spin" /> : null}
+              Create faculty account
+            </button>
+          </form>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider font-semibold text-slate-500">
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Current Role</th>
-                <th className="px-6 py-4">Update Access</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {users.map(user => (
-                <tr key={user.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-semibold text-brand-navy">{user.name}</div>
-                    <div className="text-xs text-slate-500 font-medium">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700 capitalize">
-                    <span className={`px-2 py-1 rounded text-xs tracking-wider uppercase font-bold ${
-                      user.role === 'admin' ? 'bg-brand-indigo/10 text-brand-indigo' :
-                      user.role === 'teacher' ? 'bg-brand-emerald/10 text-brand-emerald' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button 
-                      onClick={() => toggleRole(user.id, user.role)}
-                      className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-brand-navy rounded transition-colors"
-                    >
-                      Cycle Role
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-indigo/10 text-brand-indigo">
+              <GraduationCap size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-brand-navy">New student</h2>
+              <p className="text-xs text-slate-500">Creates a STUDENT user and linked profile.</p>
+            </div>
+          </div>
+
+          {msgS && (
+            <div
+              className={`mb-4 flex items-start gap-2 rounded-lg border p-3 text-sm ${
+                msgS.type === 'ok'
+                  ? 'border-brand-emerald/30 bg-brand-emerald/5 text-emerald-900'
+                  : 'border-brand-rose/25 bg-brand-rose/5 text-brand-rose'
+              }`}
+            >
+              {msgS.type === 'ok' ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+              {msgS.text}
+            </div>
+          )}
+
+          <form onSubmit={submitStudent} className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Full name</label>
+              <input className={inputCls} value={student.name} onChange={(e) => setStudent({ ...student, name: e.target.value })} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Email</label>
+              <input type="email" className={inputCls} value={student.email} onChange={(e) => setStudent({ ...student, email: e.target.value })} required />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Password</label>
+              <input type="password" className={inputCls} value={student.password} onChange={(e) => setStudent({ ...student, password: e.target.value })} required minLength={6} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">School / department (required)</label>
+              <input className={inputCls} value={student.department} onChange={(e) => setStudent({ ...student, department: e.target.value })} required placeholder="e.g. Science stream, GP" />
+            </div>
+            <button
+              type="submit"
+              disabled={loadingS}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-indigo py-2.5 text-sm font-bold text-white shadow transition hover:bg-brand-indigo/90 disabled:opacity-60"
+            >
+              {loadingS ? <Loader2 size={16} className="animate-spin" /> : null}
+              Create student account
+            </button>
+          </form>
         </div>
       </div>
     </div>

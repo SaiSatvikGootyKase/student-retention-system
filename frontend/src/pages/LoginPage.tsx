@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function LoginPage() {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [tab, setTab] = useState<'STUDENT' | 'FACULTY'>('STUDENT');
+  const [tab, setTab] = useState<'STUDENT' | 'FACULTY' | 'ADMIN'>('STUDENT');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,10 +40,16 @@ export default function LoginPage() {
     } catch (err: unknown) {
       let msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       if (msg.includes('Wrong login tab:')) {
-        msg =
-          tab === 'FACULTY'
-            ? 'Invalid credentials for Faculty login. Only faculty accounts can sign in here — use the Student tab for student accounts.'
-            : 'Invalid credentials for Student login. Only student accounts can sign in here — use the Faculty tab for faculty accounts.';
+        if (tab === 'FACULTY') {
+          msg =
+            'Invalid credentials for Faculty login. Only faculty accounts can sign in on this tab — switch tabs if you have a different role.';
+        } else if (tab === 'ADMIN') {
+          msg =
+            'Invalid credentials for Admin login. Only administrator accounts can sign in here — use Student or Faculty for other accounts.';
+        } else {
+          msg =
+            'Invalid credentials for Student login. Only student accounts can sign in on this tab — switch tabs if you have a different role.';
+        }
       }
       setError(msg);
     } finally {
@@ -83,14 +89,17 @@ export default function LoginPage() {
             </button>
             <button
               type="button"
+              disabled={tab === 'ADMIN'}
               onClick={() => {
                 setMode('register');
                 setError('');
               }}
               className={`flex-1 py-3 text-sm font-bold tracking-wide transition-colors duration-200 ease-out ${
-                mode === 'register'
-                  ? 'border-b-2 border-brand-indigo bg-brand-indigo/5 text-brand-indigo'
-                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                tab === 'ADMIN'
+                  ? 'cursor-not-allowed text-slate-300'
+                  : mode === 'register'
+                    ? 'border-b-2 border-brand-indigo bg-brand-indigo/5 text-brand-indigo'
+                    : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
               }`}
             >
               Create account
@@ -98,21 +107,22 @@ export default function LoginPage() {
           </div>
 
           <div className="flex border-b border-slate-100">
-            {(['STUDENT', 'FACULTY'] as const).map((role) => (
+            {(['STUDENT', 'FACULTY', 'ADMIN'] as const).map((role) => (
               <button
                 key={role}
                 type="button"
                 onClick={() => {
                   setTab(role);
                   setError('');
+                  if (role === 'ADMIN') setMode('login');
                 }}
-                className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 ease-out ${
+                className={`flex-1 py-3 text-xs font-bold tracking-wide transition-colors duration-200 ease-out sm:text-sm ${
                   tab === role
                     ? 'border-b-2 border-brand-indigo bg-brand-indigo/5 text-brand-indigo'
                     : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
               >
-                {role === 'STUDENT' ? '🎓 Student' : '👨‍🏫 Faculty'}
+                {role === 'STUDENT' ? '🎓 Student' : role === 'FACULTY' ? '👨‍🏫 Faculty' : '🛡️ Admin'}
               </button>
             ))}
           </div>
@@ -126,14 +136,18 @@ export default function LoginPage() {
                     : 'Register as faculty'
                   : tab === 'STUDENT'
                     ? 'Student login'
-                    : 'Faculty login'}
+                    : tab === 'FACULTY'
+                      ? 'Faculty login'
+                      : 'Administrator login'}
               </p>
               <p className="text-sm text-slate-500">
-                {mode === 'register'
-                  ? tab === 'STUDENT'
-                    ? 'Create your account — then complete the retention profile (dropout model fields) before the dashboard.'
-                    : 'Create your account — you will be signed in automatically.'
-                  : 'Enter your email and password.'}
+                {tab === 'ADMIN'
+                  ? 'Enter your email and password.'
+                  : mode === 'register'
+                    ? tab === 'STUDENT'
+                      ? 'Create your account — then complete the retention profile (dropout model fields) before the dashboard.'
+                      : 'Create your account — you will be signed in automatically.'
+                    : 'Enter your email and password.'}
               </p>
             </div>
 
@@ -144,7 +158,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {mode === 'register' && (
+            {mode === 'register' && tab !== 'ADMIN' && (
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Full name</label>
                 <div className="relative">
@@ -195,7 +209,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {mode === 'register' && (
+            {mode === 'register' && tab !== 'ADMIN' && (
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                   {tab === 'STUDENT' ? 'School (required)' : 'Department (optional)'}
@@ -231,7 +245,7 @@ export default function LoginPage() {
             </button>
 
             <p className="text-xs text-center text-slate-400">
-              {mode === 'login' ? (
+              {mode === 'login' && tab !== 'ADMIN' ? (
                 <>
                   New here?{' '}
                   <button
@@ -245,7 +259,7 @@ export default function LoginPage() {
                     Create an account
                   </button>
                 </>
-              ) : (
+              ) : mode === 'login' ? null : (
                 <>
                   Already have an account?{' '}
                   <button

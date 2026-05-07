@@ -6,7 +6,7 @@ export interface AuthContextType {
   currentUser: LoginResponse | null;
   /** Mark dropout profile gate satisfied after successful PATCH (updates localStorage). */
   markDropoutProfileComplete: () => void;
-  login: (email: string, password: string, expectedRole: 'STUDENT' | 'FACULTY') => Promise<void>;
+  login: (email: string, password: string, expectedRole: 'STUDENT' | 'FACULTY' | 'ADMIN') => Promise<void>;
   register: (args: {
     name: string;
     email: string;
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  const login = useCallback(async (email: string, password: string, expectedRole: 'STUDENT' | 'FACULTY') => {
+  const login = useCallback(async (email: string, password: string, expectedRole: 'STUDENT' | 'FACULTY' | 'ADMIN') => {
     const user = await apiLogin(email, password, expectedRole);
     setCurrentUser(user);
     localStorage.setItem('lms_user', JSON.stringify(user));
