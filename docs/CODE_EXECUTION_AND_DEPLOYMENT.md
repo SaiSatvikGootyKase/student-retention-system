@@ -247,6 +247,9 @@ Generated PNGs are written under:
 |------|-------------|
 | `SPRING_MONGODB_URI` | Full Atlas or Mongo URI including database path `/student` and query params as needed |
 | `APP_MONGODB_USE_LOCALHOST_ONLY` | Set to `false` so Atlas URI is not overridden by localhost |
+| `APP_CORS_ORIGINS` | Optional. Comma-separated origin patterns if the default is not enough (defaults now include `https://*.onrender.com` for your static frontend). Example: `https://your-app.onrender.com,https://www.yourdomain.com` |
+
+If the deployed login shows **“Failed to fetch”**, the static site is usually calling the wrong URL (`VITE_API_BASE_URL` missing at build time) or CORS blocked the browser request. Set `VITE_API_BASE_URL` on the Render **Static Site**, redeploy the frontend, and ensure the backend allows your frontend origin (defaults cover Render `*.onrender.com`).
 
 ### Frontend (Static Site)
 
