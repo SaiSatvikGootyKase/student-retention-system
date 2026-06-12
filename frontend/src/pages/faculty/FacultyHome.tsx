@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
   BarChart2,
@@ -23,14 +24,26 @@ interface FacultyHomeProps {
   searchQuery?: string;
 }
 
-function matchesQuickSearch(
-  link: { id: string; label: string; desc: string },
+type QuickLinkItem = { id: string; label: string; desc: string; keywords?: string[] };
+
+function matchesQuickSearch(link: QuickLinkItem, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const blob = `${link.label} ${link.desc} ${link.id} ${(link.keywords ?? []).join(' ')}`.toLowerCase();
+  return blob.includes(q);
+}
+
+function profileMatchesSearch(
+  user: { name?: string; email?: string; department?: string } | null | undefined,
   query: string,
 ): boolean {
   const q = query.trim().toLowerCase();
-  if (!q) return true;
-  const blob = `${link.label} ${link.desc} ${link.id}`.toLowerCase();
-  return blob.includes(q);
+  if (!q || !user) return false;
+  return (
+    (user.name || '').toLowerCase().includes(q) ||
+    (user.email || '').toLowerCase().includes(q) ||
+    (user.department || '').toLowerCase().includes(q)
+  );
 }
 
 function tierRank(tier: string | undefined): number {
@@ -73,13 +86,55 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const quickLinks = [
-  { id: 'create-assignment', label: 'Create Assignment', icon: BookOpen, color: 'bg-brand-indigo/10 text-brand-indigo', desc: 'Post new coursework' },
-  { id: 'evaluation', label: 'Evaluation', icon: CheckSquare, color: 'bg-brand-emerald/10 text-brand-emerald', desc: 'Grade submissions' },
-  { id: 'attendance', label: 'Attendance', icon: Users, color: 'bg-brand-amber/10 text-brand-amber', desc: 'Mark class attendance' },
-  { id: 'exams', label: 'Exam Scheduling', icon: FileText, color: 'bg-brand-rose/10 text-brand-rose', desc: 'Manage exam dates' },
-  { id: 'messaging', label: 'Messaging', icon: MessageSquare, color: 'bg-purple-100 text-purple-600', desc: 'Chat with students' },
-  { id: 'announcements-faculty', label: 'Announcements', icon: Bell, color: 'bg-cyan-100 text-cyan-600', desc: 'Post updates' },
+const quickLinks: Array<QuickLinkItem & { icon: LucideIcon; color: string }> = [
+  {
+    id: 'create-assignment',
+    label: 'Create Assignment',
+    icon: BookOpen,
+    color: 'bg-brand-indigo/10 text-brand-indigo',
+    desc: 'Post new coursework',
+    keywords: ['homework', 'coursework', 'task', 'assign'],
+  },
+  {
+    id: 'evaluation',
+    label: 'Evaluation',
+    icon: CheckSquare,
+    color: 'bg-brand-emerald/10 text-brand-emerald',
+    desc: 'Grade submissions',
+    keywords: ['grade', 'grading', 'marks', 'submissions', 'rubric'],
+  },
+  {
+    id: 'attendance',
+    label: 'Attendance',
+    icon: Users,
+    color: 'bg-brand-amber/10 text-brand-amber',
+    desc: 'Mark class attendance',
+    keywords: ['present', 'absent', 'roll', 'class'],
+  },
+  {
+    id: 'exams',
+    label: 'Exam Scheduling',
+    icon: FileText,
+    color: 'bg-brand-rose/10 text-brand-rose',
+    desc: 'Manage exam dates',
+    keywords: ['test', 'midterm', 'final', 'schedule', 'quiz'],
+  },
+  {
+    id: 'messaging',
+    label: 'Messaging',
+    icon: MessageSquare,
+    color: 'bg-purple-100 text-purple-600',
+    desc: 'Chat with students',
+    keywords: ['message', 'dm', 'inbox', 'chat', 'email'],
+  },
+  {
+    id: 'announcements-faculty',
+    label: 'Announcements',
+    icon: Bell,
+    color: 'bg-cyan-100 text-cyan-600',
+    desc: 'Post updates',
+    keywords: ['notice', 'news', 'broadcast', 'alert'],
+  },
 ];
 
 function PerformanceTrendChart({
@@ -267,16 +322,36 @@ export default function FacultyHome({ onNavigate, searchQuery = '' }: FacultyHom
     });
   }, []);
 
+  const prevSearchTrimRef = useRef('');
+  useEffect(() => {
+    const t = searchQuery.trim();
+    const wasEmpty = !prevSearchTrimRef.current;
+    if (!t) {
+      prevSearchTrimRef.current = '';
+      return;
+    }
+    setShowAtRiskTable(true);
+    if (wasEmpty) {
+      requestAnimationFrame(() => {
+        riskTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    prevSearchTrimRef.current = t;
+  }, [searchQuery]);
+
   const q = searchQuery.trim().toLowerCase();
   const filteredRiskRows = useMemo(() => {
     if (!q) return riskRows;
     return riskRows.filter(
       (r) =>
         r.fullName.toLowerCase().includes(q) ||
-        r.major.toLowerCase().includes(q) ||
-        r.displayStudentId.toLowerCase().includes(q) ||
+        (r.major || '').toLowerCase().includes(q) ||
+        (r.displayStudentId || '').toLowerCase().includes(q) ||
+        (r.studentId || '').toLowerCase().includes(q) ||
         (r.section && r.section.toLowerCase().includes(q)) ||
-        riskLabel(r.riskTier).toLowerCase().includes(q),
+        riskLabel(r.riskTier).toLowerCase().includes(q) ||
+        (r.riskTier || '').toLowerCase().includes(q) ||
+        String(r.performancePercent ?? '').includes(q),
     );
   }, [riskRows, q]);
 
@@ -303,7 +378,9 @@ export default function FacultyHome({ onNavigate, searchQuery = '' }: FacultyHom
     setPage(0);
   }, [rowsPerPage, filteredRiskRows.length, riskTierSortHighFirst]);
 
-  const visibleQuickLinks = quickLinks.filter((l) => matchesQuickSearch(l, searchQuery));
+  const visibleQuickLinks = quickLinks.filter(
+    (l) => matchesQuickSearch(l, searchQuery) || profileMatchesSearch(currentUser, searchQuery),
+  );
 
   const kpiCards = summary
     ? [
@@ -590,6 +667,13 @@ export default function FacultyHome({ onNavigate, searchQuery = '' }: FacultyHom
               <div>
                 <h2 className="text-lg font-bold text-brand-navy">Students at Risk</h2>
                 <p className="text-sm text-slate-500">Students requiring attention — high risk listed first.</p>
+                {q ? (
+                  <p className="mt-2 text-xs text-brand-indigo">
+                    Search: showing {filteredRiskRows.length} of {riskRows.length} student
+                    {riskRows.length === 1 ? '' : 's'}
+                    {filteredRiskRows.length === 0 && riskRows.length > 0 ? ' (try another name, ID, section, or risk level)' : ''}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   BookOpen,
   BarChart2,
@@ -20,24 +21,85 @@ interface StudentHomeProps {
   searchQuery?: string;
 }
 
-function matchesQuickSearch(
-  link: { id: string; label: string; desc: string },
-  query: string,
-): boolean {
+type QuickLinkItem = { id: string; label: string; desc: string; keywords?: string[] };
+
+function matchesQuickSearch(link: QuickLinkItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  const blob = `${link.label} ${link.desc} ${link.id}`.toLowerCase();
+  const blob = `${link.label} ${link.desc} ${link.id} ${(link.keywords ?? []).join(' ')}`.toLowerCase();
   return blob.includes(q);
 }
 
-const quickLinks = [
-  { id: 'assignments', label: 'Assignments', icon: BookOpen, color: 'bg-brand-indigo/10 text-brand-indigo', desc: 'View & submit work' },
-  { id: 'recommendations', label: 'Recommendations', icon: Sparkles, color: 'bg-violet-100 text-violet-700', desc: 'ML lecture picks for you' },
-  { id: 'results', label: 'Results', icon: BarChart2, color: 'bg-brand-emerald/10 text-brand-emerald', desc: 'Your grades & GPA' },
-  { id: 'timetable', label: 'Timetable', icon: Calendar, color: 'bg-brand-amber/10 text-brand-amber', desc: 'Class schedule' },
-  { id: 'fees', label: 'Fees', icon: DollarSign, color: 'bg-brand-rose/10 text-brand-rose', desc: 'Payment status' },
-  { id: 'announcements', label: 'Announcements', icon: Bell, color: 'bg-purple-100 text-purple-600', desc: 'Latest updates' },
-  { id: 'chat', label: 'Chat', icon: MessageSquare, color: 'bg-cyan-100 text-cyan-600', desc: 'Message your mentor' },
+function profileMatchesSearch(
+  user: { name?: string; email?: string; department?: string } | null | undefined,
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q || !user) return false;
+  return (
+    (user.name || '').toLowerCase().includes(q) ||
+    (user.email || '').toLowerCase().includes(q) ||
+    (user.department || '').toLowerCase().includes(q)
+  );
+}
+
+const quickLinks: Array<QuickLinkItem & { icon: LucideIcon; color: string }> = [
+  {
+    id: 'assignments',
+    label: 'Assignments',
+    icon: BookOpen,
+    color: 'bg-brand-indigo/10 text-brand-indigo',
+    desc: 'View & submit work',
+    keywords: ['homework', 'task', 'due', 'submit', 'coursework'],
+  },
+  {
+    id: 'recommendations',
+    label: 'Recommendations',
+    icon: Sparkles,
+    color: 'bg-violet-100 text-violet-700',
+    desc: 'ML lecture picks for you',
+    keywords: ['ml', 'lecture', 'courses', 'dropout', 'ai', 'suggest'],
+  },
+  {
+    id: 'results',
+    label: 'Results',
+    icon: BarChart2,
+    color: 'bg-brand-emerald/10 text-brand-emerald',
+    desc: 'Your grades & GPA',
+    keywords: ['grades', 'marks', 'gpa', 'score', 'transcript'],
+  },
+  {
+    id: 'timetable',
+    label: 'Timetable',
+    icon: Calendar,
+    color: 'bg-brand-amber/10 text-brand-amber',
+    desc: 'Class schedule',
+    keywords: ['schedule', 'calendar', 'classes', 'room'],
+  },
+  {
+    id: 'fees',
+    label: 'Fees',
+    icon: DollarSign,
+    color: 'bg-brand-rose/10 text-brand-rose',
+    desc: 'Payment status',
+    keywords: ['payment', 'tuition', 'billing', 'invoice', 'balance'],
+  },
+  {
+    id: 'announcements',
+    label: 'Announcements',
+    icon: Bell,
+    color: 'bg-purple-100 text-purple-600',
+    desc: 'Latest updates',
+    keywords: ['news', 'notice', 'alert', 'broadcast'],
+  },
+  {
+    id: 'chat',
+    label: 'Chat',
+    icon: MessageSquare,
+    color: 'bg-cyan-100 text-cyan-600',
+    desc: 'Message your mentor',
+    keywords: ['message', 'mentor', 'faculty', 'dm', 'inbox'],
+  },
 ];
 
 function riskStatColor(tier: string | undefined): string {
@@ -87,10 +149,30 @@ export default function StudentHome({ onNavigate, searchQuery = '' }: StudentHom
     [ml],
   );
 
-  const visibleQuickLinks = quickLinks.filter((l) => matchesQuickSearch(l, searchQuery));
+  const mlSearchBlob = useMemo(() => {
+    if (!ml) return '';
+    return [
+      ml.riskTier,
+      ml.riskLevelLabel,
+      ml.mlRecommendedSubject,
+      ml.dropoutInsightSummary,
+      ml.learningGoalHint,
+      ml.lectureInferenceSource,
+      ...(ml.lectureModelTopProbabilities ?? []).map((p) => `${p.subject} ${p.probability}`),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+  }, [ml]);
+
+  const q = searchQuery.trim().toLowerCase();
+  const visibleQuickLinks = quickLinks.filter(
+    (l) => matchesQuickSearch(l, searchQuery) || profileMatchesSearch(currentUser, searchQuery),
+  );
   const visibleStats = statsRow.filter((s) => {
-    const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
+    if (mlSearchBlob.includes(q)) return true;
+    if (profileMatchesSearch(currentUser, searchQuery)) return true;
     return `${s.label} ${s.value}`.toLowerCase().includes(q);
   });
 
@@ -131,20 +213,26 @@ export default function StudentHome({ onNavigate, searchQuery = '' }: StudentHom
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {visibleStats.map(({ label, value, icon: Icon, color }) => (
-          <div
-            key={label}
-            className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-indigo/20 hover:shadow-md"
-          >
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
-              <Icon size={20} />
+        {q && visibleStats.length === 0 ? (
+          <p className="col-span-full text-sm text-slate-500 bg-white border border-slate-200 rounded-xl p-4">
+            No overview cards match your search. Try a label like attendance, fees, or risk — or clear the search.
+          </p>
+        ) : (
+          visibleStats.map(({ label, value, icon: Icon, color }) => (
+            <div
+              key={label}
+              className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-indigo/20 hover:shadow-md"
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
+                <Icon size={20} />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 font-medium">{label}</p>
+                <p className="text-lg font-bold text-brand-navy">{value}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-lg font-bold text-brand-navy">{value}</p>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <div>

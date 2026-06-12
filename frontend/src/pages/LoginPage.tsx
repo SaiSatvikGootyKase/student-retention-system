@@ -67,8 +67,8 @@ export default function LoginPage() {
           <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-navy shadow-lg transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl hover:shadow-brand-indigo/20">
             <BookOpen className="text-brand-indigo" size={32} />
           </div>
-          <h1 className="text-3xl font-bold text-brand-navy tracking-tight">Retentio LMS</h1>
-          <p className="text-slate-500 font-medium mt-1">Learning Management System</p>
+          <h1 className="text-3xl font-bold text-brand-navy tracking-tight">CampusPulse</h1>
+          <p className="text-slate-500 font-medium mt-1">Student success & retention</p>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl transition-shadow duration-300 ease-out hover:shadow-2xl hover:shadow-brand-indigo/10">

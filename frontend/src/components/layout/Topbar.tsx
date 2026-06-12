@@ -28,7 +28,7 @@ const Topbar = ({
         <input
           type="search"
           role="searchbox"
-          aria-label="Search pages and quick links"
+          aria-label={isFaculty ? 'Search students, pages, and quick links' : 'Search pages, quick links, and insights'}
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
           onKeyDown={e => {
@@ -37,7 +37,11 @@ const Topbar = ({
               onSearchEnter?.();
             }
           }}
-          placeholder={isFaculty ? 'Search pages (e.g. attendance, exam)...' : 'Search pages (e.g. results, fees)...'}
+          placeholder={
+            isFaculty
+              ? 'Search students, pages (e.g. Smith, attendance, high risk)...'
+              : 'Search pages & insights (e.g. fees, mentor, risk, ML)...'
+          }
           className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm transition-all duration-200 ease-out placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-indigo focus:outline-none focus:ring-2 focus:ring-brand-indigo/25"
         />
       </div>
