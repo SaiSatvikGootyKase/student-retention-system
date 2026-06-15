@@ -21,9 +21,12 @@ public class DemoApplication {
 	private static void configureEnvironment(ApplicationEnvironmentPreparedEvent event) {
 		ConfigurableEnvironment environment = event.getEnvironment();
 		if (isRenderRuntime()) {
-			// Honour SPRING_MONGODB_URI from Render; skip local test→student migration (no test DB in Atlas).
+			// Honour SPRING_MONGODB_URI from Render; skip local-only startup jobs (no test DB / extra DBs on Atlas).
 			environment.getPropertySources().addFirst(new MapPropertySource("renderDefaults", Map.of(
-					"app.migration.copy-test-to-student", false
+					"app.migration.copy-test-to-student", false,
+					"app.portal.bootstrap-databases", false,
+					"app.student.ensure-ml-collections", false,
+					"app.admin.bootstrap-default", false
 			)));
 			return;
 		}

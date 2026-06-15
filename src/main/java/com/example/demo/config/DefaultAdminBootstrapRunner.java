@@ -6,6 +6,7 @@ import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,6 +18,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(
+		prefix = "app.admin", name = "bootstrap-default", havingValue = "true", matchIfMissing = true)
 public class DefaultAdminBootstrapRunner {
 
     private final UserRepository userRepository;
