@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace/app
 
 # Copy gradle configuration
@@ -16,11 +16,11 @@ RUN chmod +x gradlew
 # Build the application
 RUN ./gradlew build -x test --no-daemon
 
-# Create final minimal image
-FROM eclipse-temurin:21-jre-alpine
+# Debian-based JRE (not Alpine): reliable DNS SRV lookup for mongodb+srv Atlas URIs on Render.
+FROM eclipse-temurin:21-jre
 VOLUME /tmp
 ARG DEPENDENCY=/workspace/app/build/libs
 COPY --from=build ${DEPENDENCY}/*.jar app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -jar /app.jar --server.port=${PORT:-8080}"]

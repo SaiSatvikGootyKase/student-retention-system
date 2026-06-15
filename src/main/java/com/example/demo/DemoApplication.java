@@ -24,6 +24,10 @@ public class DemoApplication {
 	 */
 	private static void pinLocalMongoIfEnabled(ApplicationEnvironmentPreparedEvent event) {
 		ConfigurableEnvironment environment = event.getEnvironment();
+		// On Render, always honour SPRING_MONGODB_URI from the dashboard (Atlas).
+		if (isRenderRuntime()) {
+			return;
+		}
 		boolean force = environment.getProperty("app.mongodb.use-localhost-only", Boolean.class, true);
 		if (!Boolean.TRUE.equals(force)) {
 			return;
@@ -33,5 +37,10 @@ public class DemoApplication {
 				"spring.mongodb.database", "student"
 		);
 		environment.getPropertySources().addFirst(new MapPropertySource("pinLocalMongo", map));
+	}
+
+	private static boolean isRenderRuntime() {
+		String render = System.getenv("RENDER");
+		return render != null && render.equalsIgnoreCase("true");
 	}
 }
