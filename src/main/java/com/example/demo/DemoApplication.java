@@ -14,20 +14,21 @@ public class DemoApplication {
 
 	public static void main(String[] args) {
 		SpringApplication application = new SpringApplication(DemoApplication.class);
-		application.addListeners((ApplicationListener<ApplicationEnvironmentPreparedEvent>) DemoApplication::pinLocalMongoIfEnabled);
+		application.addListeners((ApplicationListener<ApplicationEnvironmentPreparedEvent>) DemoApplication::configureEnvironment);
 		application.run(args);
 	}
 
-	/**
-	 * When {@code app.mongodb.use-localhost-only=true}, prepends a property source so
-	 * {@code spring.mongodb.uri} / {@code spring.mongodb.database} win over env (e.g. Atlas / compose).
-	 */
-	private static void pinLocalMongoIfEnabled(ApplicationEnvironmentPreparedEvent event) {
+	private static void configureEnvironment(ApplicationEnvironmentPreparedEvent event) {
 		ConfigurableEnvironment environment = event.getEnvironment();
-		// On Render, always honour SPRING_MONGODB_URI from the dashboard (Atlas).
 		if (isRenderRuntime()) {
+			// Honour SPRING_MONGODB_URI from Render; skip local test→student migration (no test DB in Atlas).
+			environment.getPropertySources().addFirst(new MapPropertySource("renderDefaults", Map.of(
+					"app.migration.copy-test-to-student", false
+			)));
 			return;
 		}
+
+		// When app.mongodb.use-localhost-only=true, pin Mongo to localhost for local dev.
 		boolean force = environment.getProperty("app.mongodb.use-localhost-only", Boolean.class, true);
 		if (!Boolean.TRUE.equals(force)) {
 			return;
